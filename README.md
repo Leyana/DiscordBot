@@ -41,3 +41,4 @@ Discord bot customised for PaidToWin server.
 - 8ball
 - Dice roll
 - Fix Wolfram
+- Add cooldowns
