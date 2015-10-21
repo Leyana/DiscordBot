@@ -12,8 +12,8 @@ var youtube_plugin = new yt();
 var gi = require("./google_image_plugin");
 var google_image_plugin = new gi();
 
-var wa = require("./wolfram_plugin");
-var wolfram_plugin = new wa();
+//var wa = require("./wolfram_plugin");
+//var wolfram_plugin = new wa();
 
 // Get the email and password
 var AuthDetails = require("./auth.json");
@@ -30,20 +30,20 @@ var config = {
 
 
 //https://api.imgflip.com/popular_meme_ids
-var meme = {
-	"brace": 61546,
-	"mostinteresting": 61532,
-	"fry": 61520,
-	"onedoesnot": 61579,
-	"yuno": 61527,
-	"success": 61544,
-	"allthethings": 61533,
-	"doge": 8072285,
-	"drevil": 40945639,
-	"skeptical": 101711,
-	"notime": 442575,
-	"yodawg": 101716
-};
+//var meme = {
+//	"brace": 61546,
+//	"mostinteresting": 61532,
+//	"fry": 61520,
+//	"onedoesnot": 61579,
+//	"yuno": 61527,
+//	"success": 61544,
+//	"allthethings": 61533,
+//	"doge": 8072285,
+//	"drevil": 40945639,
+//	"skeptical": 101711,
+//	"notime": 442575,
+//	"yodawg": 101716
+//};
 
 var game_abbreviations = {
     "cs": "Counter-Strike",
@@ -51,25 +51,14 @@ var game_abbreviations = {
     "hots": "Heroes of the Storm",
     "sc2": "Starcraft II",
     "gta": "Grand Theft Auto"
+//	"sc": "Star Citizen"
+//	"dfo": "Dungeon Fighter Online"
+//	"civ": "Civilization"
+//	"WoWs": "World of Warships"
 };
 
 var commands = {
-	"gif": {
-		usage: "<image tags>",
-        description: "returns a random gif matching the tags passed",
-		process: function(bot, msg, suffix) {
-		    var tags = suffix.split(" ");
-		    get_gif(tags, function(id) {
-			if (typeof id !== "undefined") {
-			    bot.sendMessage(msg.channel, "http://media.giphy.com/media/" + id + "/giphy.gif [Tags: " + (tags ? tags : "Random GIF") + "]");
-			}
-			else {
-			    bot.sendMessage(msg.channel, "Invalid tags, try something different. [Tags: " + (tags ? tags : "Random GIF") + "]");
-			}
-		    });
-		}
-	},
-    "ping": {
+	"ping": {
         description: "responds pong, useful for checking if bot is alive",
         process: function(bot, msg, suffix) {
             bot.sendMessage(msg.channel, msg.sender+" pong!");
@@ -164,20 +153,20 @@ var commands = {
             });
         }
     },
-    "meme": {
-        usage: 'meme "top text" "bottom text"',
-        process: function(bot,msg,suffix) {
-            var tags = msg.content.split('"');
-            var memetype = tags[0].split(" ")[1];
-            //bot.sendMessage(msg.channel,tags);
-            var Imgflipper = require("imgflipper");
-            var imgflipper = new Imgflipper(AuthDetails.imgflip_username, AuthDetails.imgflip_password);
-            imgflipper.generateMeme(meme[memetype], tags[1]?tags[1]:"", tags[3]?tags[3]:"", function(err, image){
-                //console.log(arguments);
-                bot.sendMessage(msg.channel,image);
-            });
-        }
-    },
+//    "meme": {
+//       usage: 'meme "top text" "bottom text"',
+//        process: function(bot,msg,suffix) {
+//            var tags = msg.content.split('"');
+//            var memetype = tags[0].split(" ")[1];
+//            //bot.sendMessage(msg.channel,tags);
+//            var Imgflipper = require("imgflipper");
+//            var imgflipper = new Imgflipper(AuthDetails.imgflip_username, AuthDetails.imgflip_password);
+//            imgflipper.generateMeme(meme[memetype], tags[1]?tags[1]:"", tags[3]?tags[3]:"", function(err, image){
+//                //console.log(arguments);
+//                bot.sendMessage(msg.channel,image);
+//            });
+//        }
+//    },
     "memehelp": { //TODO: this should be handled by !help
         description: "returns available memes for !meme",
         process: function(bot,msg) {
@@ -219,6 +208,34 @@ var commands = {
             var Wiki = require('wikijs');
             new Wiki().search(query,1).then(function(data) {
                 new Wiki().page(data.results[0]).then(function(page) {
+                    page.summary().then(function(summary) {
+                        var sumText = summary.toString().split('\n');
+                        var continuation = function() {
+                            var paragraph = sumText.shift();
+                            if(paragraph){
+                                bot.sendMessage(msg.channel,paragraph,continuation);
+                            }
+                        };
+                        continuation();
+                    });
+                });
+            },function(err){
+                bot.sendMessage(msg.channel,err);
+            });
+        }
+    },
+	    "kcwiki": {
+        usage: "<search terms>",
+        description: "returns the summary of the first matching search result from Kancolle Wiki",
+        process: function(bot,msg,suffix) {
+            var query = suffix;
+            if(!query) {
+                bot.sendMessage(msg.channel,"usage: !kcwiki search terms");
+                return;
+            }
+            var kcwiki = require('wikijs');
+            new kcwiki().search(query,1).then(function(data) {
+                new kcwiki().page(data.results[0]).then(function(page) {
                     page.summary().then(function(summary) {
                         var sumText = summary.toString().split('\n');
                         var continuation = function() {
@@ -305,16 +322,16 @@ var commands = {
             });
         }
     },
-	"wolfram": {
-		usage: "<search terms>",
-        description: "gives results from wolframalpha using search terms",
-        process: function(bot,msg,suffix){
-			if(!suffix){
-				bot.sendMessage(msg.channel,"Usage: !wolfram <search terms> (Ex. !wolfram integrate 4x)");
-			}
-            wolfram_plugin.respond(suffix,msg.channel,bot);
-        }
-	},
+//	"wolfram": {
+//		usage: "<search terms>",
+//        description: "gives results from wolframalpha using search terms",
+//        process: function(bot,msg,suffix){
+//			if(!suffix){
+//				bot.sendMessage(msg.channel,"Usage: !wolfram <search terms> (Ex. !wolfram integrate 4x)");
+//			}
+//            wolfram_plugin.respond(suffix,msg.channel,bot);
+//        }
+//	},
     "rss": {
         description: "lists available rss feeds",
         process: function(bot,msg,suffix) {
