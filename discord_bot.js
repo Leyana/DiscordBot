@@ -356,7 +356,77 @@ var commands = {
             }
             rssfeed(bot,msg,"https://www.reddit.com"+path,1,false);
         }
-    }
+    },
+    "d": {
+        usage: "number of die separated by d and the number of sides on a die, no spaces",
+        description: "Dice rolls",
+        process: function(bot,msg,suffix) {
+			if (msg.author.id == id number here){
+			var isValid = false;
+			
+			if(suffix) {
+				var resultArr = suffix.split("d")
+				
+				if(resultArr.length == 2) {
+					var maxRange = resultArr[1];
+					var currentSum = 0;
+					var resultString = "";
+					
+					if(isInt(maxRange) && isInt(resultArr[0])) {
+						for(i=0; i<resultArr[0]; i++)
+						{
+							var rollValue = Math.floor(Math.random() * maxRange) + 1;
+							var counter = i+1;
+							currentSum += rollValue;
+							resultString += "dice" + counter + ":" + rollValue + " ";
+						}
+						
+						isValid = true;
+						resultString += "  total:" + currentSum;
+						bot.sendMessage(msg.channel, resultString);	
+					}
+				}
+			}
+			
+			if(!isValid) {
+				bot.sendMessage(msg.channel, "Invalid format.");	
+			}
+			}
+			else {
+			    bot.sendMessage(msg.channel, "You are not an admin");
+			}
+        }
+    },
+	"8ball": {
+		usage: "Ask a question",
+		description: "Ask 8ball a question",
+		process: function(bot,msg,suffix) {
+			var messages = new Array();
+			msg[0] = "It is certain";
+			msg[1] = "It is decidedly so";
+			msg[2] = "Without a doubt";
+			msg[3] = "Yes definitely";
+			msg[4] = "You may rely on it";
+			msg[5] = "As I see it yes";
+			msg[6] = "Most likely";
+			msg[7] = "Outlook good";
+			msg[8] = "yes";
+			msg[9] = "Signs point to yes";
+			msg[10] = "Reply hazy try again";
+			msg[11] = "Ask again later";
+			msg[12] = "Better not tell you now";
+			msg[13] = "Cannot predict now";
+			msg[14] = "Concentrate and ask again";
+			msg[15] = "Don't count on it";
+			msg[16] = "My reply is no";
+			msg[17] = "My sources say no";
+			msg[18] = "Outlook not so good";
+			msg[19] = "Very doubtful";
+
+			var randomnumber = Math.floor(Math.random() * 20);
+			bot.sendMessage(msg.channel,msg[randomnumber]);
+		}
+	}
 };
 try{
 var rssFeeds = require("./rss.json");
