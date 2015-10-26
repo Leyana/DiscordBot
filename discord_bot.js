@@ -57,6 +57,8 @@ var game_abbreviations = {
 //	"WoWs": "World of Warships"
 };
 
+var admin_ids = ["input ID number here"];
+
 var commands = {
 	"ping": {
         description: "responds pong, useful for checking if bot is alive",
@@ -361,7 +363,7 @@ var commands = {
         usage: "number of die separated by d and the number of sides on a die, no spaces",
         description: "Dice rolls",
         process: function(bot,msg,suffix) {
-			if (msg.author.id == id number here){
+			if (isAdmin(msg.author.id)){
 			var isValid = false;
 			
 			if(suffix) {
@@ -391,9 +393,6 @@ var commands = {
 			if(!isValid) {
 				bot.sendMessage(msg.channel, "Invalid format.");	
 			}
-			}
-			else {
-			    bot.sendMessage(msg.channel, "You are not an admin");
 			}
         }
     },
