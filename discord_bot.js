@@ -50,10 +50,10 @@ var game_abbreviations = {
     "hon": "Heroes of Newerth",
     "hots": "Heroes of the Storm",
     "sc2": "Starcraft II",
-    "gta": "Grand Theft Auto"
-//	"sc": "Star Citizen"
-//	"dfo": "Dungeon Fighter Online"
-//	"civ": "Civilization"
+    "gta": "Grand Theft Auto",
+//	"sc": "Star Citizen",
+//	"dfo": "Dungeon Fighter Online",
+//	"civ": "Civilization",
 //	"WoWs": "World of Warships"
 };
 
