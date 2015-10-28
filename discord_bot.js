@@ -1,19 +1,7 @@
-/*
-	this bot is a ping pong bot, and every time a message
-	beginning with "ping" is sent, it will reply with
-	"pong".
-*/
-
 var Discord = require("discord.js");
-
-var yt = require("./youtube_plugin");
-var youtube_plugin = new yt();
 
 var gi = require("./google_image_plugin");
 var google_image_plugin = new gi();
-
-//var wa = require("./wolfram_plugin");
-//var wolfram_plugin = new wa();
 
 // Get the email and password
 var AuthDetails = require("./auth.json");
@@ -28,40 +16,35 @@ var config = {
     "permission": ["NORMAL"]
 };
 
-
-//https://api.imgflip.com/popular_meme_ids
-//var meme = {
-//	"brace": 61546,
-//	"mostinteresting": 61532,
-//	"fry": 61520,
-//	"onedoesnot": 61579,
-//	"yuno": 61527,
-//	"success": 61544,
-//	"allthethings": 61533,
-//	"doge": 8072285,
-//	"drevil": 40945639,
-//	"skeptical": 101711,
-//	"notime": 442575,
-//	"yodawg": 101716
-//};
-
 var game_abbreviations = {
     "cs": "Counter-Strike",
+    "csgo": "Counter-Strike Global Offensive",
     "hon": "Heroes of Newerth",
     "hots": "Heroes of the Storm",
     "sc2": "Starcraft II",
     "gta": "Grand Theft Auto",
-//	"sc": "Star Citizen",
-//	"dfo": "Dungeon Fighter Online",
-//	"civ": "Civilization",
-//	"WoWs": "World of Warships"
+    "kc": "Kantai Collection",
+    "KC": "KanColle",
+    "sc": "Star Citizen",
+    "dfo": "Dungeon Fighter Online",
+    "DFO": "Dungeon Fighter Online",
+    "civ": "Civilization",
+    "WoWs": "World of Warships",
+    "wows": "World of Warships",
+    "ToS": "Tree of Saviors",
+    "tos": "Tree of Saviors",
+    "bns": "Blade and Soul",
+    "BnS": "Blade and Soul"
 };
 
-var admin_ids = ["input ID number here"];
+var cmdLastExecutedTime = {};
+
+var admin_ids = ["108259713732345856"];
 
 var commands = {
-	"ping": {
+    "ping": {
         description: "responds pong, useful for checking if bot is alive",
+	timeout: 5, // in sec
         process: function(bot, msg, suffix) {
             bot.sendMessage(msg.channel, msg.sender+" pong!");
             if(suffix){
@@ -72,6 +55,7 @@ var commands = {
     "game": {
         usage: "<name of game>",
         description: "pings channel asking if anyone wants to play",
+	timeout: 5, // in sec
         process: function(bot,msg,suffix){
             var game = game_abbreviations[suffix];
             if(!game) {
@@ -83,120 +67,45 @@ var commands = {
     },
     "servers": {
         description: "lists servers bot is connected to",
-        process: function(bot,msg){bot.sendMessage(msg.channel,bot.servers);}
+	adminOnly: true,
+        process: function(bot,msg){
+	bot.sendMessage(msg.author,bot.servers);}
     },
     "channels": {
         description: "lists channels bot is connected to",
-        process: function(bot,msg) { bot.sendMessage(msg.channel,bot.channels);}
+	adminOnly: true,
+        process: function(bot,msg) { 
+	bot.sendMessage(msg.author,bot.channels);}
     },
     "myid": {
         description: "returns the user id of the sender",
-        process: function(bot,msg){bot.sendMessage(msg.channel,msg.author.id);}
+        process: function(bot,msg){bot.sendMessage(msg.author,msg.author.id);}
     },
     "idle": {
         description: "sets bot status to idle",
-        process: function(bot,msg){ bot.setStatusIdle();}
+        adminOnly: true,
+	process: function(bot,msg){ 
+        bot.setStatusIdle();}
     },
     "online": {
         description: "sets bot status to online",
-        process: function(bot,msg){ bot.setStatusOnline();}
-    },
-    "youtube": {
-        usage: "<video tags>",
-        description: "gets youtube video matching tags",
-        process: function(bot,msg,suffix){
-            youtube_plugin.respond(suffix,msg.channel,bot);
-        }
+	adminOnly: true,
+        process: function(bot,msg){ 
+        bot.setStatusOnline();}
     },
     "say": {
         usage: "<message>",
         description: "bot says message",
-        process: function(bot,msg,suffix){ bot.sendMessage(msg.channel,suffix,true);}
+	adminOnly: true,
+        process: function(bot,msg,suffix){ 
+        bot.sendMessage(msg.channel,suffix,true);}
+
     },
     "image": {
         usage: "<image tags>",
         description: "gets image matching tags from google",
-        process: function(bot,msg,suffix){ google_image_plugin.respond(suffix,msg.channel,bot);}
-    },
-    "pullanddeploy": {
-        description: "bot will perform a git pull master and restart with the new code",
-        process: function(bot,msg,suffix) {
-            bot.sendMessage(msg.channel,"fetching updates...",function(error,sentMsg){
-                console.log("updating...");
-	            var spawn = require('child_process').spawn;
-                var log = function(err,stdout,stderr){
-                    if(stdout){console.log(stdout);}
-                    if(stderr){console.log(stderr);}
-                };
-                var fetch = spawn('git', ['fetch']);
-                fetch.stdout.on('data',function(data){
-                    console.log(data.toString());
-                });
-                fetch.on("close",function(code){
-                    var reset = spawn('git', ['reset','--hard','origin/master']);
-                    reset.stdout.on('data',function(data){
-                        console.log(data.toString());
-                    });
-                    reset.on("close",function(code){
-                        var npm = spawn('npm', ['install']);
-                        npm.stdout.on('data',function(data){
-                            console.log(data.toString());
-                        });
-                        npm.on("close",function(code){
-                            console.log("goodbye");
-                            bot.sendMessage(msg.channel,"brb!",function(){
-                                bot.logout(function(){
-                                    process.exit();
-                                });
-                            });
-                        });
-                    });
-                });
-            });
-        }
-    },
-//    "meme": {
-//       usage: 'meme "top text" "bottom text"',
-//        process: function(bot,msg,suffix) {
-//            var tags = msg.content.split('"');
-//            var memetype = tags[0].split(" ")[1];
-//            //bot.sendMessage(msg.channel,tags);
-//            var Imgflipper = require("imgflipper");
-//            var imgflipper = new Imgflipper(AuthDetails.imgflip_username, AuthDetails.imgflip_password);
-//            imgflipper.generateMeme(meme[memetype], tags[1]?tags[1]:"", tags[3]?tags[3]:"", function(err, image){
-//                //console.log(arguments);
-//                bot.sendMessage(msg.channel,image);
-//            });
-//        }
-//    },
-    "memehelp": { //TODO: this should be handled by !help
-        description: "returns available memes for !meme",
-        process: function(bot,msg) {
-            var str = "Currently available memes:\n"
-            for (var m in meme){
-                str += m + "\n"
-            }
-            bot.sendMessage(msg.channel,str);
-        }
-    },
-    "version": {
-        description: "returns the git commit this bot is running",
-        process: function(bot,msg,suffix) {
-            var commit = require('child_process').spawn('git', ['log','-n','1']);
-            commit.stdout.on('data', function(data) {
-                bot.sendMessage(msg.channel,data);
-            });
-            commit.on('close',function(code) {
-                if( code != 0){
-                    bot.sendMessage(msg.channel,"failed checking git version!");
-                }
-            });
-        }
-    },
-    "log": {
-        usage: "<log message>",
-        description: "logs message to bot console",
-        process: function(bot,msg,suffix){console.log(msg.content);}
+	timeout: 5, // in sec
+        process: function(bot,msg,suffix){ google_image_plugin.respond(suffix,msg.author,bot);}
     },
     "wiki": {
         usage: "<search terms>",
@@ -215,50 +124,23 @@ var commands = {
                         var continuation = function() {
                             var paragraph = sumText.shift();
                             if(paragraph){
-                                bot.sendMessage(msg.channel,paragraph,continuation);
+                                bot.sendMessage(msg.author,paragraph,continuation);
                             }
                         };
                         continuation();
                     });
                 });
             },function(err){
-                bot.sendMessage(msg.channel,err);
-            });
-        }
-    },
-	    "kcwiki": {
-        usage: "<search terms>",
-        description: "returns the summary of the first matching search result from Kancolle Wiki",
-        process: function(bot,msg,suffix) {
-            var query = suffix;
-            if(!query) {
-                bot.sendMessage(msg.channel,"usage: !kcwiki search terms");
-                return;
-            }
-            var kcwiki = require('wikijs');
-            new kcwiki().search(query,1).then(function(data) {
-                new kcwiki().page(data.results[0]).then(function(page) {
-                    page.summary().then(function(summary) {
-                        var sumText = summary.toString().split('\n');
-                        var continuation = function() {
-                            var paragraph = sumText.shift();
-                            if(paragraph){
-                                bot.sendMessage(msg.channel,paragraph,continuation);
-                            }
-                        };
-                        continuation();
-                    });
-                });
-            },function(err){
-                bot.sendMessage(msg.channel,err);
+                bot.sendMessage(msg.author,err);
             });
         }
     },
     "join-server": {
         usage: "<invite>",
         description: "joins the server it's invited to",
+	adminOnly: true,
         process: function(bot,msg,suffix) {
-            console.log(bot.joinServer(suffix,function(error,server) {
+		console.log(bot.joinServer(suffix,function(error,server) {
                 console.log("callback: " + arguments);
                 if(error){
                     bot.sendMessage(msg.channel,"failed to join: " + error);
@@ -269,9 +151,10 @@ var commands = {
             }));
         }
     },
-    "create": {
+     "create": {
         usage: "<text|voice> <channel name>",
         description: "creates a channel with the given type and name.",
+	adminOnly: true,
         process: function(bot,msg,suffix) {
             var args = suffix.split(" ");
             var type = args.shift();
@@ -291,6 +174,7 @@ var commands = {
     "delete": {
         usage: "<channel name>",
         description: "deletes the specified channel",
+	adminOnly: true,
         process: function(bot,msg,suffix) {
             var channel = bot.getChannel("name",suffix);
             bot.sendMessage(msg.channel.server.defaultChannel, "deleting channel " + suffix + " at " +msg.author + "'s request");
@@ -306,36 +190,9 @@ var commands = {
             });
         }
     },
-    "stock": {
-        usage: "<stock to fetch>",
-        process: function(bot,msg,suffix) {
-            var yahooFinance = require('yahoo-finance');
-            yahooFinance.snapshot({
-              symbol: suffix,
-              fields: ['s', 'n', 'd1', 'l1', 'y', 'r'],
-            }, function (error, snapshot) {
-                if(error){
-                    bot.sendMessage(msg.channel,"couldn't get stock: " + error);
-                } else {
-                    //bot.sendMessage(msg.channel,JSON.stringify(snapshot));
-                    bot.sendMessage(msg.channel,snapshot.name
-                        + "\nprice: $" + snapshot.lastTradePriceOnly);
-                }  
-            });
-        }
-    },
-//	"wolfram": {
-//		usage: "<search terms>",
-//        description: "gives results from wolframalpha using search terms",
-//        process: function(bot,msg,suffix){
-//			if(!suffix){
-//				bot.sendMessage(msg.channel,"Usage: !wolfram <search terms> (Ex. !wolfram integrate 4x)");
-//			}
-//            wolfram_plugin.respond(suffix,msg.channel,bot);
-//        }
-//	},
     "rss": {
         description: "lists available rss feeds",
+	adminOnly: true,
         process: function(bot,msg,suffix) {
             /*var args = suffix.split(" ");
             var count = args.shift();
@@ -348,22 +205,11 @@ var commands = {
             });
         }
     },
-    "reddit": {
-        usage: "[subreddit]",
-        description: "Returns the top post on reddit. Can optionally pass a subreddit to get the top psot there instead",
-        process: function(bot,msg,suffix) {
-            var path = "/.rss"
-            if(suffix){
-                path = "/r/"+suffix+path;
-            }
-            rssfeed(bot,msg,"https://www.reddit.com"+path,1,false);
-        }
-    },
     "d": {
         usage: "number of die separated by d and the number of sides on a die, no spaces",
-        description: "Dice rolls",
+        description: "dice rolls",
+	timeout: 5, // in sec
         process: function(bot,msg,suffix) {
-			if (isAdmin(msg.author.id)){
 			var isValid = false;
 			
 			if(suffix) {
@@ -394,11 +240,11 @@ var commands = {
 				bot.sendMessage(msg.channel, "Invalid format.");	
 			}
 			}
-        }
     },
 	"8ball": {
-		usage: "Ask a question",
-		description: "Ask 8ball a question",
+		usage: "ask a question",
+		description: "ask 8ball a question",
+		timeout: 5, // in sec
 		process: function(bot,msg,suffix) {
 			var messages = new Array();
 			msg[0] = "It is certain";
@@ -427,6 +273,7 @@ var commands = {
 		}
 	}
 };
+
 try{
 var rssFeeds = require("./rss.json");
 function loadFeeds(){
@@ -516,11 +363,14 @@ bot.on("message", function (msg) {
                 if(description){
                     info += "\n\t" + description;
                 }
-                bot.sendMessage(msg.channel,info);
+                bot.sendMessage(msg.author,info);
             }
         }
 		else if(cmd) {
-            cmd.process(bot,msg,suffix);
+			var cmdCheckSpec = canProcessCmd(cmd, cmdTxt, msg.author.id, msg);
+			if(cmdCheckSpec.isAllow) {
+				cmd.process(bot,msg,suffix);
+			}
 		} else {
 			bot.sendMessage(msg.channel, "Invalid command " + cmdTxt);
 		}
@@ -545,6 +395,51 @@ bot.on("presence", function(data) {
 	console.log(data.user+" went "+data.status);
 	//}
 });
+
+function isInt(value) {
+  return !isNaN(value) && 
+         parseInt(Number(value)) == value && 
+         !isNaN(parseInt(value, 10));
+}
+
+function canProcessCmd(cmd, cmdText, userId, msg) {
+	var isAllowResult = true;
+	var errorMessage = "";
+	
+	if (cmd.hasOwnProperty("timeout")) {
+		// check for timeout
+		if(cmdLastExecutedTime.hasOwnProperty(cmdText)) {
+			var currentDateTime = new Date();
+			var lastExecutedTime = new Date(cmdLastExecutedTime[cmdText]);
+			lastExecutedTime.setSeconds(lastExecutedTime.getSeconds() + cmd.timeout);
+			
+			if(currentDateTime < lastExecutedTime) {
+				// still on cooldown
+				isAllowResult = false;
+				//var diff = (lastExecutedTime-currentDateTime)/1000;
+				//errorMessage = diff + " secs remaining";
+			}
+			else {
+				// update last executed date time
+				cmdLastExecutedTime[cmdText] = new Date();
+			}
+		}
+		else {
+			// first time executing, add to last executed time
+			cmdLastExecutedTime[cmdText] = new Date();
+		}
+	}
+	
+	if (cmd.hasOwnProperty("adminOnly") && cmd.adminOnly && !isAdmin(userId)) {
+		isAllowResult = false;
+	}
+	
+	return { isAllow: isAllowResult, errMsg: errorMessage };
+}
+
+function isAdmin(id) {
+  return (admin_ids.indexOf(id) > -1);
+}
 
 function get_gif(tags, func) {
         //limit=1 will only return 1 gif
