@@ -37,8 +37,4 @@ Discord bot customised for PaidToWin server.
 - All the things!
 
 ## Custom Commands to add
-- Search KanColle wiki
-- 8ball
-- Dice roll
 - Fix Wolfram
-- Add cooldowns
