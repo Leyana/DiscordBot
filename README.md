@@ -7,18 +7,21 @@ Discord bot customised for PaidToWin server.
 - !image query => returns an image (careful, no adult filter)
 - !youtube query=> returns a youtube link
 - !wiki query=> returns the summary of the first search result on Wikipedia
-- !say text => echos text
-- !pullanddeploy => pulls changes from your (or this) repo and restarts node. does <strong>not</strong> work for windows!
+- !say text => echos text (admin only)
+- !pullanddeploy => pulls changes from your (or this) repo and restarts node. does <strong>not</strong> work for windows! (admin only)
 - !help => prints all commands with usage and description;
 - !version => last deployed commit
-- !servers => returns servers this bot is in
-- !channels => returns channels this bot is in
-- !idle => sets bot status to idle
-- !online => sets bot status to online
+- !servers => returns servers this bot is in (admin only)
+- !channels => returns channels this bot is in (admin only)
+- !idle => sets bot status to idle (admin only)
+- !online => sets bot status to online (admin only)
 - !ping => responds to user with pong!
-- !join-server => bot will join the requested server
-- !create => create a channel
-- !delete => deletes a channel
+- !join-server => bot will join the requested server (admin only)
+- !create => create a channel (admin only)
+- !delete => deletes a channel (admin only)
+- !shipgame => Avatar game
+- !8ball => 8ball function
+- !d => Dice rolling function
 - @botname => responds when @mentioned
 
 ## RSS:
