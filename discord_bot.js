@@ -43,6 +43,8 @@ var cmdLastExecutedTime = {};
 
 var admin_ids = ["108259713732345856"];
 
+var owner_id = ["93147516974923776"];
+
 var commands = {
     "ping": {
         description: "responds pong, useful for checking if bot is alive",
@@ -480,6 +482,42 @@ request(searchurl, function (error, response, html) {
 });
 			}
     },
+	"mute": {
+		usage: "Mute user (admin only)",
+		description: "Prevents a user from sending messages.",
+		adminOnly: true,
+		process: function(bot,msg,suffix) {
+			var user = msg.mentions[0].id
+			bot.addMemberToRole(user, msg.channel.server.roles.get("name", "NaughtyCorner"))
+			console.log(suffix + " has been muted.")
+			bot.sendMessage(msg.channel,"Take a break.")
+		}
+	},
+	"unmute": {
+		usage: "Unmute user (admin only)",
+		description: "Restores ability to send messages.",
+		adminOnly: true,
+		process: function(bot,msg,suffix) {
+			var user = msg.mentions[0].id
+			bot.removeMemberFromRole(user, msg.channel.server.roles.get("name", "NaughtyCorner"))
+			console.log(suffix + " has been muted.")
+			bot.sendMessage(msg.channel,"Behave this time.")
+		}
+	},
+	"slap": {
+        usage: "<message>",
+        description: "Slaps someone with random things.",
+        process: function(bot,msg,suffix){ 
+        bot.sendMessage(msg.channel, msg.sender + " slaps " + suffix + " around a bit with a large trout.");}
+    },
+	
+	"kick": {
+        usage: "<user>",
+        description: "Don't push the big red button.",
+        process: function(bot,msg){ 
+		bot.kickMember(msg.author, msg.channel.server)
+        bot.sendMessage(msg.channel, "Did you really think that would work?");}
+    }
 };
 
 try{
@@ -592,6 +630,7 @@ bot.on("message", function (msg) {
         if (msg.author != bot.user && msg.isMentioned(bot.user)) {
                 bot.sendMessage(msg.channel,msg.author + ", you called?");
         }
+        
     }
 });
  
@@ -639,6 +678,10 @@ function canProcessCmd(cmd, cmdText, userId, msg) {
 	}
 	
 	if (cmd.hasOwnProperty("adminOnly") && cmd.adminOnly && !isAdmin(userId)) {
+		isAllowResult = false;
+	}
+	
+	if (cmd.hasOwnProperty("ownerOnly") && cmd.ownerOnly && !isOwner(userId)) {
 		isAllowResult = false;
 	}
 	
