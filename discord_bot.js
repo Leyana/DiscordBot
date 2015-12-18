@@ -517,7 +517,53 @@ request(searchurl, function (error, response, html) {
         process: function(bot,msg){ 
 		bot.kickMember(msg.author, msg.channel.server)
         bot.sendMessage(msg.channel, "Did you really think that would work?");}
-    }
+    },
+    	"weather": {
+        usage: "<city/postcode;country>",
+        description: "Use the city name or post code, country codes are optional and based off: https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2",
+        process: function(bot,msg,suffix){ 
+		var weatherurl = "http://api.openweathermap.org/data/2.5/weather?q=" + suffix + "&appid=ff6c10b19b22817f2697be556825ec56";
+		request(weatherurl, function (error, response, html) {
+			if (!error && response.statusCode == 200 && suffix != null) {
+				var weathersearch = JSON.parse(html);
+				var conditions = weathersearch.weather[0].main;
+				var tempC = (weathersearch.main.temp-273.15).toFixed(2);
+				var tempF = ((weathersearch.main.temp*9/5)-459.67).toFixed(2);
+				if(weathersearch.wind.deg > 337.5 || weathersearch.wind.deg <22.5) {
+					var windDir = "North";
+				} else if (weathersearch.wind.deg > 22.5 && weathersearch.wind.deg <67.5) {
+					var windDir = "North East";
+				} else if (weathersearch.wind.deg > 67.5 && weathersearch.wind.deg <112.5) {
+					var windDir = "East";
+				} else if (weathersearch.wind.deg > 112.5 && weathersearch.wind.deg <157.5) {
+					var windDir = "South East";
+				} else if (weathersearch.wind.deg > 157.5 && weathersearch.wind.deg <202.5) {
+					var windDir = "South";
+				} else if (weathersearch.wind.deg > 202.5 && weathersearch.wind.deg <247.5) {
+					var windDir = "South West";
+				} else if (weathersearch.wind.deg > 247.5 && weathersearch.wind.deg <292.5) {
+					var windDir = "West";
+				} else {
+					var windDir = "North West";
+				};
+				var windSpdK = (weathersearch.wind.speed*18/5).toFixed(2);
+				var windSpdM = (weathersearch.wind.speed*2.237).toFixed(2);
+				var humidity = weathersearch.main.humidity;
+				var city = weathersearch.name;
+				var place = weathersearch.sys.country;
+				var windchillF = (35.74+(0.6215*tempF)-(35.75*windSpdM*Math.pow(10,0.16))+(0.4275*tempF*windSpdM*Math.pow(10,0.16))).toFixed(2);
+				var windchillC = ((windchillF-32)*5/9).toFixed(2)
+				bot.sendMessage(msg.author,"The weather right now in " + suffix + " is: "+ 
+				"\n" + "Conditions: " + conditions +
+				"\n" + "Temperature: " + tempC + "C/" + tempF +"F with a wind chill of " + windchillC + "C/" + windchillF +"F"+
+				"\n" + "Wind: " + windSpdK + "kph/" + windSpdM + "mph blowing "+ windDir +
+				"\n" + "Humidity: " + humidity + "%");
+			} else {
+				bot.sendMessage(msg.channel,"Please input a city/zip and country using the syntax <city/postcode;country>")
+			}
+		});
+		}
+	}
 };
 
 try{
