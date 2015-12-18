@@ -39,6 +39,9 @@ var game_abbreviations = {
     "BnS": "Blade and Soul"
 };
 
+var messageSpamCount = 4;
+var messageSpamPeriod = 15; // in sec
+var usersDictionary = {};
 var cmdLastExecutedTime = {};
 
 var admin_ids = ["108259713732345856"];
@@ -633,6 +636,9 @@ bot.on("disconnected", function () {
 });
 
 bot.on("message", function (msg) {
+	if (msg.author.username != "ErrorMusume") {
+		updateSpamFilterLog(msg);
+	}
 	//check if message is a command
 	if(msg.author.id != bot.user.id && (msg.content[0] === '!' || msg.content.indexOf(bot.user.mention()) == 0)){
         console.log("treating " + msg.content + " from " + msg.author + " as command");
@@ -693,6 +699,41 @@ function isInt(value) {
   return !isNaN(value) && 
          parseInt(Number(value)) == value && 
          !isNaN(parseInt(value, 10));
+}
+
+function updateSpamFilterLog(msg) {
+	// get user instance by id
+	var user = msg.author;
+	var currentUser = usersDictionary[user.id];
+	
+	if (!currentUser) {
+		// create user and insert to dictionary
+		usersDictionary[user.id] = {id: user.id, msgLogs: []};
+		currentUser = usersDictionary[user.id];
+	}
+
+	if (currentUser.msgLogs.length > messageSpamCount) {
+		// check if the earliest message is within spam period
+		var earliestMessageSentDateTime = currentUser.msgLogs[0].sentDateTime;
+		earliestMessageSentDateTime.setSeconds(earliestMessageSentDateTime.getSeconds() + messageSpamPeriod);
+		if (new Date() < earliestMessageSentDateTime) {
+			bot.addMemberToRole(user, msg.channel.server.roles.get("name", "NaughtyCorner"));
+			bot.sendMessage(msg.channel,"Take a break.")
+			setTimeout(function(){
+				bot.removeMemberFromRole(user, msg.channel.server.roles.get("name", "NaughtyCorner"));
+			}, 30000);
+		}
+	}
+	
+	// purge logs beyond spam period
+	currentUser.msgLogs = currentUser.msgLogs.filter(function(msgLog) {
+		var timeThreshold = new Date();
+		timeThreshold.setSeconds(timeThreshold.getSeconds() - messageSpamPeriod);
+		return msgLog.sentDateTime > timeThreshold;
+	});
+	
+	// log current message
+	currentUser.msgLogs.push({msg: msg.content, sentDateTime: new Date()});
 }
 
 function canProcessCmd(cmd, cmdText, userId, msg) {
