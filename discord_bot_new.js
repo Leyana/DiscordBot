@@ -2,6 +2,7 @@ var Discord = require("discord.js");
 
 var yt = require("./youtube_plugin");
 var youtube_plugin = new yt();
+var request = require('request');
 
 try {
 	var wa = require("./wolfram_plugin");
@@ -53,9 +54,9 @@ var messageSpamPeriod = 15; // in sec
 var usersDictionary = {};
 var cmdLastExecutedTime = {};
 
-var admin_ids = ["108259713732345856","92800062886789120","93147516974923776","84511991804223488","92798750765903872"];
+var admin_ids = ["92800062886789120","93147516974923776","84511991804223488","92798750765903872"];
 
-var owner_id = ["93147516974923776"];
+var owner_ids = ["93147516974923776"];
 
 var commands = {
    "ping": {
@@ -869,7 +870,7 @@ bot.on("message", function (msg) {
 		try{
             cmd.process(bot,msg,suffix);
 	    	} catch(e){
-			console.lo("command " + cmdTxt + " failed :(\n" + e.stack);
+			console.log("command " + cmdTxt + " failed :(\n" + e.stack);
 		}
             //if ("process" in cmd ){ 
 			//	cmd.process(bot,msg,suffix);
@@ -935,6 +936,12 @@ function isAdmin(id) {
 
 function isOwner(id) {
   return (owner_ids.indexOf(id) > -1);
+}
+
+function isInt(value) {
+  return !isNaN(value) && 
+         parseInt(Number(value)) == value && 
+         !isNaN(parseInt(value, 10));
 }
  
 function updateSpamFilterLog(msg) {
