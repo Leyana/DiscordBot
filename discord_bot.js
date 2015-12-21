@@ -702,14 +702,19 @@ function isInt(value) {
 }
 
 function updateSpamFilterLog(msg) {
-	// get user instance by id
+// get user instance by id
 	var user = msg.author;
 	var currentUser = usersDictionary[user.id];
-	
+
 	if (!currentUser) {
 		// create user and insert to dictionary
-		usersDictionary[user.id] = {id: user.id, msgLogs: []};
+		usersDictionary[user.id] = {id: user.id, isMuted: false, msgLogs: []};
 		currentUser = usersDictionary[user.id];
+	}
+	
+	// todo: refactor to use server roles instead of adding muted flag
+	if (currentUser.isMuted) {
+		return;
 	}
 
 	if (currentUser.msgLogs.length > messageSpamCount) {
@@ -717,11 +722,16 @@ function updateSpamFilterLog(msg) {
 		var earliestMessageSentDateTime = currentUser.msgLogs[0].sentDateTime;
 		earliestMessageSentDateTime.setSeconds(earliestMessageSentDateTime.getSeconds() + messageSpamPeriod);
 		if (new Date() < earliestMessageSentDateTime) {
+			currentUser.isMuted = true;
 			bot.addMemberToRole(user, msg.channel.server.roles.get("name", "NaughtyCorner"));
-			bot.sendMessage(msg.channel,"Take a break.")
+			bot.sendMessage(msg.author,"Please do not spam.")
 			setTimeout(function(){
+				currentUser.isMuted = false;
 				bot.removeMemberFromRole(user, msg.channel.server.roles.get("name", "NaughtyCorner"));
+				// purge all logs
+				currentUser.msgLogs = [];
 			}, 30000);
+			return;
 		}
 	}
 	
