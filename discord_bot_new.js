@@ -2,7 +2,6 @@ var Discord = require("discord.js");
 
 var yt = require("./youtube_plugin");
 var youtube_plugin = new yt();
-
 var request = require('request');
 
 try {
@@ -25,7 +24,6 @@ var config = {
     "url": "http://api.giphy.com/v1/gifs/search",
     "permission": ["NORMAL"]
 };
-
 var aliases;
 var messagebox;
 
@@ -57,11 +55,10 @@ var cmdLastExecutedTime = {};
 
 var admin_ids = ["92800062886789120","93147516974923776","84511991804223488","92798750765903872"];
 var owner_ids = ["93147516974923776"];
-
 var commands = {
-   "ping": {
+    "ping": {
         description: "responds pong, useful for checking if bot is alive",
-	timeout: 5, // in sec
+		timeout: 5, // in sec
         process: function(bot, msg, suffix) {
             bot.sendMessage(msg.channel, msg.sender+" pong!");
             if(suffix){
@@ -72,7 +69,7 @@ var commands = {
     "game": {
         usage: "<name of game>",
         description: "pings channel asking if anyone wants to play",
-	timeout: 5, // in sec
+		timeout: 5, // in sec
         process: function(bot,msg,suffix){
             var game = game_abbreviations[suffix];
             if(!game) {
@@ -84,31 +81,33 @@ var commands = {
     },
     "servers": {
         description: "lists servers bot is connected to",
-	adminOnly: true,
-        process: function(bot,msg){
-	bot.sendMessage(msg.author,bot.servers);}
+		adminOnly: true,
+		process: function(bot,msg){
+			bot.sendMessage(msg.author,bot.servers);
+		}
     },
     "channels": {
-        description: "lists channels bot is connected to",
-	adminOnly: true,
-        process: function(bot,msg) { 
-	bot.sendMessage(msg.author,bot.channels);}
+		description: "lists channels bot is connected to",
+		adminOnly: true,
+		process: function(bot,msg) { 
+			bot.sendMessage(msg.author,bot.channels);
+		}
     },
     "myid": {
         description: "returns the user id of the sender",
-
-        process: function(bot,msg){bot.sendMessage(msg.author,msg.author.id);}
+        process: function(bot,msg){
+			bot.sendMessage(msg.author,msg.author.id);
+		}
     },
     "idle": {
         description: "sets bot status to idle",
-
         ownerOnly: true,
-	process: function(bot,msg){ 
-        bot.setStatusIdle();}
-    },
+		process: function(bot,msg){ 
+			bot.setStatusIdle();
+		}
+	},
     "online": {
         description: "sets bot status to online",
-
 	ownerOnly: true,
         process: function(bot,msg){ 
         bot.setStatusOnline();}
@@ -119,9 +118,7 @@ var commands = {
 	adminOnly: true,
         process: function(bot,msg,suffix){ 
         bot.sendMessage(msg.channel,suffix,true);}
-
     },
-
     "youtube": {
         usage: "<video tags>",
         description: "gets youtube video matching tags",
@@ -130,7 +127,6 @@ var commands = {
             youtube_plugin.respond(suffix,msg.channel,bot);
         }
     },
-  
     "version": {
         description: "returns the git commit this bot is running",
 	ownerOnly: true,
@@ -196,20 +192,10 @@ var commands = {
         description: "creates a new text channel with the given name.",
 	adminOnly: true,
         process: function(bot,msg,suffix) {
-
-
-
-
-
-
             bot.createChannel(msg.channel.server,suffix,"text").then(function(channel) {
-
                 bot.sendMessage(msg.channel,"created " + channel);
-
             }).catch(function(error){
 				bot.sendMessage(msg.channel,"failed to create channel: " + error);
-
-
 			});
         }
     },
@@ -231,7 +217,6 @@ var commands = {
         description: "deletes the specified channel",
 	adminOnly: true,
         process: function(bot,msg,suffix) {
-
 			var channel = bot.channels.get("id",suffix);
 			if(suffix.startsWith('<#')){
 				channel = bot.channels.get("id",suffix.substr(2,suffix.length-3));
@@ -265,7 +250,6 @@ var commands = {
     },
     "stock": {
         usage: "<stock to fetch>",
-	timeout: 30, // in sec
         process: function(bot,msg,suffix) {
             var yahooFinance = require('yahoo-finance');
             yahooFinance.snapshot({
@@ -275,7 +259,6 @@ var commands = {
                 if(error){
                     bot.sendMessage(msg.channel,"couldn't get stock: " + error);
                 } else {
-
                     //bot.sendMessage(msg.channel,JSON.stringify(snapshot));
                     bot.sendMessage(msg.channel,snapshot.name
                         + "\nprice: $" + snapshot.lastTradePriceOnly);
@@ -320,7 +303,6 @@ var commands = {
             rssfeed(bot,msg,"https://www.reddit.com"+path,1,false);
         }
     },
-
 	"userid": {
 		usage: "[user to get id of]",
 		description: "Returns the unique id of a user. This is useful for permissions.",
@@ -329,19 +311,19 @@ var commands = {
 			if(suffix){
 				var users = msg.channel.server.members.getAll("username",suffix);
 				if(users.length == 1){
-					bot.sendMessage(msg.author, "The id of " + users[0] + " is " + users[0].id)
+					bot.sendMessage(msg.channel, "The id of " + users[0] + " is " + users[0].id)
 				} else if(users.length > 1){
 					var response = "multiple users found:";
 					for(var i=0;i<users.length;i++){
 						var user = users[i];
 						response += "\nThe id of " + user + " is " + user.id;
 					}
-					bot.sendMessage(msg.author,response);
+					bot.sendMessage(msg.channel,response);
 				} else {
-					bot.sendMessage(msg.author,"No user " + suffix + " found!");
+					bot.sendMessage(msg.channel,"No user " + suffix + " found!");
 				}
 			} else {
-				bot.sendMessage(msg.author, "The id of " + msg.author + " is " + msg.author.id);
+				bot.sendMessage(msg.channel, "The id of " + msg.author + " is " + msg.author.id);
 			}
 		}
 	},
@@ -374,7 +356,7 @@ var commands = {
 			updateMessagebox();
 			bot.sendMessage(msg.channel,"message saved.")
 		}
-	},
+},
     "d": {
         usage: "number of die separated by d and the number of sides on a die, no spaces",
         description: "dice rolls",
@@ -685,7 +667,6 @@ request(searchurl, function (error, response, html) {
         process: function(bot,msg){ 
 		bot.kickMember(msg.author, msg.channel.server)
         bot.sendMessage(msg.channel, "Did you really think that would work?");}
-
     },
     	"weather": {
         usage: "<city/postcode;country>",
@@ -734,7 +715,6 @@ request(searchurl, function (error, response, html) {
 		}
 	}
 };
-
 try{
 var rssFeeds = require("./rss.json");
 function loadFeeds(){
@@ -851,6 +831,7 @@ bot.on("disconnected", function () {
 bot.on("message", function (msg) {
 	if (msg.author.username != "ErrorMusume") {
 		updateSpamFilterLog(msg);
+	}
 	//check if message is a command
 	if(msg.author.id != bot.user.id && (msg.content[0] === '!' || msg.content.indexOf(bot.user.mention()) == 0)){
         console.log("treating " + msg.content + " from " + msg.author + " as command");
@@ -879,7 +860,6 @@ bot.on("message", function (msg) {
 					var usage = commands[cmd].usage;
 					if(usage){
 						info += " " + usage;
-
 					}
 					var description = commands[cmd].description;
 					if(description){
@@ -887,15 +867,13 @@ bot.on("message", function (msg) {
 					}
 					bot.sendMessage(msg.author,info);
 				}
-
-
-
 			});
         }
 		else if(cmd) {
 			var cmdCheckSpec = canProcessCmd(cmd, cmdTxt, msg.author.id, msg);
 			if(cmdCheckSpec.isAllow) {
-
+				cmd.process(bot,msg,suffix);
+			}
 		try{
             cmd.process(bot,msg,suffix);
 	    	} catch(e){
@@ -903,7 +881,6 @@ bot.on("message", function (msg) {
 		}
             //if ("process" in cmd ){ 
 			//	cmd.process(bot,msg,suffix);
-
 			//}
 		} else {
 			console.log("Invalid command " + cmdTxt);
@@ -943,15 +920,11 @@ function canProcessCmd(cmd, cmdText, userId, msg) {
 				cmdLastExecutedTime[cmdText] = new Date();
 			}
 		}
-
-
-
 		else {
 			// first time executing, add to last executed time
 			cmdLastExecutedTime[cmdText] = new Date();
 		}
 	}
-
 	
 	if (cmd.hasOwnProperty("adminOnly") && cmd.adminOnly && !isAdmin(userId)) {
 		isAllowResult = false;
@@ -967,14 +940,6 @@ function canProcessCmd(cmd, cmdText, userId, msg) {
 function isAdmin(id) {
   return (admin_ids.indexOf(id) > -1);
 }
-
-
-
-
-
-
-
-
 function isOwner(id) {
   return (owner_ids.indexOf(id) > -1);
 }
@@ -984,7 +949,6 @@ function isInt(value) {
          parseInt(Number(value)) == value && 
          !isNaN(parseInt(value, 10));
 }
-
  
 function updateSpamFilterLog(msg) {
 // get user instance by id
@@ -1030,32 +994,6 @@ function updateSpamFilterLog(msg) {
 	// log current message
 	currentUser.msgLogs.push({msg: msg.content, sentDateTime: new Date()});
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 //Log user status changes
 bot.on("presence", function(user,status,gameId) {
 	//if(status === "online"){
@@ -1073,25 +1011,6 @@ bot.on("presence", function(user,status,gameId) {
 			bot.sendMessage(channel,message.content);
 		}
 	}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 	}catch(e){}
 });
 
