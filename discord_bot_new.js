@@ -14,6 +14,28 @@ try {
 // Get the email and password
 var AuthDetails = require("./auth.json");
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 var qs = require("querystring");
 
 var htmlToText = require('html-to-text');
@@ -46,6 +68,21 @@ var game_abbreviations = {
     "tos": "Tree of Saviors",
     "bns": "Blade and Soul",
     "BnS": "Blade and Soul"
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 };
 
 var messageSpamCount = 4;
@@ -53,9 +90,30 @@ var messageSpamPeriod = 15; // in sec
 var usersDictionary = {};
 var cmdLastExecutedTime = {};
 
+
+
+
+
+
+
 var admin_ids = ["92800062886789120","93147516974923776","84511991804223488","92798750765903872"];
 var owner_ids = ["93147516974923776"];
 var commands = {
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     "ping": {
         description: "responds pong, useful for checking if bot is alive",
 		timeout: 5, // in sec
@@ -118,6 +176,7 @@ var commands = {
 	adminOnly: true,
         process: function(bot,msg,suffix){ 
         bot.sendMessage(msg.channel,suffix,true);}
+
     },
     "youtube": {
         usage: "<video tags>",
@@ -127,6 +186,77 @@ var commands = {
             youtube_plugin.respond(suffix,msg.channel,bot);
         }
     },
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     "version": {
         description: "returns the git commit this bot is running",
 	ownerOnly: true,
@@ -142,6 +272,11 @@ var commands = {
             });
         }
     },
+
+
+
+
+
     "wiki": {
         usage: "<search terms>",
         description: "returns the summary of the first matching search result from Wikipedia",
@@ -303,6 +438,25 @@ var commands = {
             rssfeed(bot,msg,"https://www.reddit.com"+path,1,false);
         }
     },
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 	"userid": {
 		usage: "[user to get id of]",
 		description: "Returns the unique id of a user. This is useful for permissions.",
@@ -327,6 +481,17 @@ var commands = {
 			}
 		}
 	},
+
+
+
+
+
+
+
+
+
+
+
 	"topic": {
 		usage: "[topic]",
 		adminOnly: true,
@@ -335,6 +500,16 @@ var commands = {
 			bot.setTopic(msg.channel,suffix);
 		}
 	},
+
+
+
+
+
+
+
+
+
+
 	"msg": {
 		usage: "<user> <message to leave user>",
 		description: "leaves a message for a user the next time they come online",
@@ -829,10 +1004,11 @@ bot.on("disconnected", function () {
 });
 
 bot.on("message", function (msg) {
-	if (msg.author.username != "ErrorMusume") {
+	if (msg.author.username != bot.user.username) {
 		updateSpamFilterLog(msg);
 	}
 	//check if message is a command
+
 	if(msg.author.id != bot.user.id && (msg.content[0] === '!' || msg.content.indexOf(bot.user.mention()) == 0)){
         console.log("treating " + msg.content + " from " + msg.author + " as command");
 		var cmdTxt = msg.content.split(" ")[0].substring(1);
@@ -842,7 +1018,7 @@ bot.on("message", function (msg) {
 				cmdTxt = msg.content.split(" ")[1];
 				suffix = msg.content.substring(bot.user.mention().length+cmdTxt.length+2);
 			} catch(e){ //no command
-				console.log("No command");
+				bot.sendMessage(msg.channel,"Yes?");
 				return;
 			}
         }
@@ -872,19 +1048,21 @@ bot.on("message", function (msg) {
 		else if(cmd) {
 			var cmdCheckSpec = canProcessCmd(cmd, cmdTxt, msg.author.id, msg);
 			if(cmdCheckSpec.isAllow) {
-				cmd.process(bot,msg,suffix);
-			}
-		try{
-            cmd.process(bot,msg,suffix);
-	    	} catch(e){
-			console.log("command " + cmdTxt + " failed :(\n" + e.stack);
-		}
+				try{
+					cmd.process(bot,msg,suffix);
+				} catch(e){
+					bot.sendMessage(msg.channel, "command " + cmdTxt + " failed :(\n" + e.stack);
+				}
+
             //if ("process" in cmd ){ 
 			//	cmd.process(bot,msg,suffix);
 			//}
-		} else {
-			console.log("Invalid command " + cmdTxt);
-		}
+			} else {
+				bot.sendMessage(msg.channel, "Invalid command " + cmdTxt);
+			}
+			}
+
+
 	} else {
 		//message isn't a command or is from us
         //drop our own messages to prevent feedback loops
@@ -950,6 +1128,7 @@ function isInt(value) {
          !isNaN(parseInt(value, 10));
 }
  
+
 function updateSpamFilterLog(msg) {
 // get user instance by id
 	var user = msg.author;
@@ -994,6 +1173,53 @@ function updateSpamFilterLog(msg) {
 	// log current message
 	currentUser.msgLogs.push({msg: msg.content, sentDateTime: new Date()});
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 //Log user status changes
 bot.on("presence", function(user,status,gameId) {
 	//if(status === "online"){
