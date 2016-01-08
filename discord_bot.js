@@ -1,12 +1,21 @@
 var Discord = require("discord.js");
+var Idolgame = require("./Idolgame.js");
+var Shipgame = require("./Shipgame.js");
 
-var gi = require("./google_image_plugin");
-var google_image_plugin = new gi();
-
+var yt = require("./youtube_plugin");
+var youtube_plugin = new yt();
 var request = require('request');
+
+try {
+	var wa = require("./wolfram_plugin");
+	var wolfram_plugin = new wa();
+} catch(e){
+	console.log("couldn't load wolfram plugin!\n"+e.stack);
+}
 
 // Get the email and password
 var AuthDetails = require("./auth.json");
+
 var qs = require("querystring");
 
 var htmlToText = require('html-to-text');
@@ -17,6 +26,8 @@ var config = {
     "url": "http://api.giphy.com/v1/gifs/search",
     "permission": ["NORMAL"]
 };
+var aliases;
+var messagebox;
 
 var game_abbreviations = {
     "cs": "Counter-Strike",
@@ -44,14 +55,12 @@ var messageSpamPeriod = 15; // in sec
 var usersDictionary = {};
 var cmdLastExecutedTime = {};
 
-var admin_ids = ["108259713732345856"];
-
-var owner_id = ["93147516974923776"];
-
+var admin_ids = ["92800062886789120","93147516974923776","84511991804223488","92798750765903872"];
+var owner_ids = ["93147516974923776"];
 var commands = {
     "ping": {
         description: "responds pong, useful for checking if bot is alive",
-	timeout: 5, // in sec
+		timeout: 5, // in sec
         process: function(bot, msg, suffix) {
             bot.sendMessage(msg.channel, msg.sender+" pong!");
             if(suffix){
@@ -62,7 +71,7 @@ var commands = {
     "game": {
         usage: "<name of game>",
         description: "pings channel asking if anyone wants to play",
-	timeout: 5, // in sec
+		timeout: 5, // in sec
         process: function(bot,msg,suffix){
             var game = game_abbreviations[suffix];
             if(!game) {
@@ -74,29 +83,34 @@ var commands = {
     },
     "servers": {
         description: "lists servers bot is connected to",
-	adminOnly: true,
-        process: function(bot,msg){
-	bot.sendMessage(msg.author,bot.servers);}
+		adminOnly: true,
+		process: function(bot,msg){
+			bot.sendMessage(msg.author,bot.servers);
+		}
     },
     "channels": {
-        description: "lists channels bot is connected to",
-	adminOnly: true,
-        process: function(bot,msg) { 
-	bot.sendMessage(msg.author,bot.channels);}
+		description: "lists channels bot is connected to",
+		adminOnly: true,
+		process: function(bot,msg) { 
+			bot.sendMessage(msg.author,bot.channels);
+		}
     },
     "myid": {
         description: "returns the user id of the sender",
-        process: function(bot,msg){bot.sendMessage(msg.author,msg.author.id);}
+        process: function(bot,msg){
+			bot.sendMessage(msg.author,msg.author.id);
+		}
     },
     "idle": {
         description: "sets bot status to idle",
-        adminOnly: true,
-	process: function(bot,msg){ 
-        bot.setStatusIdle();}
-    },
+        ownerOnly: true,
+		process: function(bot,msg){ 
+			bot.setStatusIdle();
+		}
+	},
     "online": {
         description: "sets bot status to online",
-	adminOnly: true,
+	ownerOnly: true,
         process: function(bot,msg){ 
         bot.setStatusOnline();}
     },
@@ -106,17 +120,34 @@ var commands = {
 	adminOnly: true,
         process: function(bot,msg,suffix){ 
         bot.sendMessage(msg.channel,suffix,true);}
-
     },
-    "image": {
-        usage: "<image tags>",
-        description: "gets image matching tags from google",
-	timeout: 5, // in sec
-        process: function(bot,msg,suffix){ google_image_plugin.respond(suffix,msg.author,bot);}
+    "youtube": {
+        usage: "<video tags>",
+        description: "gets youtube video matching tags",
+	timeout: 15, // in sec
+        process: function(bot,msg,suffix){
+            youtube_plugin.respond(suffix,msg.channel,bot);
+        }
+    },
+    "version": {
+        description: "returns the git commit this bot is running",
+	ownerOnly: true,
+        process: function(bot,msg,suffix) {
+            var commit = require('child_process').spawn('git', ['log','-n','1']);
+            commit.stdout.on('data', function(data) {
+                bot.sendMessage(msg.channel,data);
+            });
+            commit.on('close',function(code) {
+                if( code != 0){
+                    bot.sendMessage(msg.channel,"failed checking git version!");
+                }
+            });
+        }
     },
     "wiki": {
         usage: "<search terms>",
         description: "returns the summary of the first matching search result from Wikipedia",
+	timeout: 5, // in sec
         process: function(bot,msg,suffix) {
             var query = suffix;
             if(!query) {
@@ -131,23 +162,23 @@ var commands = {
                         var continuation = function() {
                             var paragraph = sumText.shift();
                             if(paragraph){
-                                bot.sendMessage(msg.author,paragraph,continuation);
+                                bot.sendMessage(msg.channel,paragraph,continuation);
                             }
                         };
                         continuation();
                     });
                 });
             },function(err){
-                bot.sendMessage(msg.author,err);
+                bot.sendMessage(msg.channel,err);
             });
         }
     },
     "join-server": {
         usage: "<invite>",
         description: "joins the server it's invited to",
-	adminOnly: true,
+	ownerOnly: true,
         process: function(bot,msg,suffix) {
-		console.log(bot.joinServer(suffix,function(error,server) {
+            console.log(bot.joinServer(suffix,function(error,server) {
                 console.log("callback: " + arguments);
                 if(error){
                     bot.sendMessage(msg.channel,"failed to join: " + error);
@@ -158,48 +189,98 @@ var commands = {
             }));
         }
     },
-     "create": {
-        usage: "<text|voice> <channel name>",
-        description: "creates a channel with the given type and name.",
+    "create": {
+        usage: "<channel name>",
+        description: "creates a new text channel with the given name.",
 	adminOnly: true,
         process: function(bot,msg,suffix) {
-            var args = suffix.split(" ");
-            var type = args.shift();
-            if(type != "text" && type != "voice"){
-                bot.sendMessage(msg.channel,"you must specify either voice or text!");
-                return;
-            }
-            bot.createChannel(msg.channel.server,args.join(" "),type, function(error,channel) {
-                if(error){
-                    bot.sendMessage(msg.channel,"failed to create channel: " + error);
-                } else {
-                    bot.sendMessage(msg.channel,"created " + channel);
-                }
-            });
+            bot.createChannel(msg.channel.server,suffix,"text").then(function(channel) {
+                bot.sendMessage(msg.channel,"created " + channel);
+            }).catch(function(error){
+				bot.sendMessage(msg.channel,"failed to create channel: " + error);
+			});
         }
     },
+	"voice": {
+		usage: "<channel name>",
+		description: "creates a new voice channel with the give name.",
+	adminOnly: true,
+		process: function(bot,msg,suffix) {
+            bot.createChannel(msg.channel.server,suffix,"voice").then(function(channel) {
+                bot.sendMessage(msg.channel,"created " + channel.id);
+				console.log("created " + channel);
+            }).catch(function(error){
+				bot.sendMessage(msg.channel,"failed to create channel: " + error);
+			});
+        }
+	},
     "delete": {
         usage: "<channel name>",
         description: "deletes the specified channel",
 	adminOnly: true,
         process: function(bot,msg,suffix) {
-            var channel = bot.getChannel("name",suffix);
+			var channel = bot.channels.get("id",suffix);
+			if(suffix.startsWith('<#')){
+				channel = bot.channels.get("id",suffix.substr(2,suffix.length-3));
+			}
+            if(!channel){
+				var channels = bot.channels.getAll("name",suffix);
+				if(channels.length > 1){
+					var response = "Multiple channels match, please use id:";
+					for(var i=0;i<channels.length;i++){
+						response += channels[i] + ": " + channels[i].id;
+					}
+					bot.sendMessage(msg.channel,response);
+					return;
+				}else if(channels.length == 1){
+					channel = channels[0];
+				} else {
+					bot.sendMessage(msg.channel, "Couldn't find channel " + suffix + " to delete!");
+					return;
+				}
+			}
             bot.sendMessage(msg.channel.server.defaultChannel, "deleting channel " + suffix + " at " +msg.author + "'s request");
             if(msg.channel.server.defaultChannel != msg.channel){
                 bot.sendMessage(msg.channel,"deleting " + channel);
             }
-            bot.deleteChannel(channel,function(error,channel){
+            bot.deleteChannel(channel).then(function(channel){
+				console.log("deleted " + suffix + " at " + msg.author + "'s request");
+            }).catch(function(error){
+				bot.sendMessage(msg.channel,"couldn't delete channel: " + error);
+			});
+        }
+    },
+    "stock": {
+        usage: "<stock to fetch>",
+        process: function(bot,msg,suffix) {
+            var yahooFinance = require('yahoo-finance');
+            yahooFinance.snapshot({
+              symbol: suffix,
+              fields: ['s', 'n', 'd1', 'l1', 'y', 'r'],
+            }, function (error, snapshot) {
                 if(error){
-                    bot.sendMessage(msg.channel,"couldn't delete channel: " + error);
+                    bot.sendMessage(msg.channel,"couldn't get stock: " + error);
                 } else {
-                    console.log("deleted " + suffix + " at " + msg.author + "'s request");
-                }
+                    //bot.sendMessage(msg.channel,JSON.stringify(snapshot));
+                    bot.sendMessage(msg.channel,snapshot.name
+                        + "\nprice: $" + snapshot.lastTradePriceOnly);
+                }  
             });
         }
     },
+	"wolfram": {
+		usage: "<search terms>",
+        description: "gives results from wolframalpha using search terms",
+	timeout: 5, // in sec
+        process: function(bot,msg,suffix){
+				if(!suffix){
+					bot.sendMessage(msg.channel,"Usage: !wolfram <search terms> (Ex. !wolfram integrate 4x)");
+				}
+	            wolfram_plugin.respond(suffix,msg.channel,bot);
+       	    }
+	},
     "rss": {
         description: "lists available rss feeds",
-	adminOnly: true,
         process: function(bot,msg,suffix) {
             /*var args = suffix.split(" ");
             var count = args.shift();
@@ -212,6 +293,72 @@ var commands = {
             });
         }
     },
+    "reddit": {
+        usage: "[subreddit]",
+        description: "Returns the top post on reddit. Can optionally pass a subreddit to get the top psot there instead",
+	timeout: 5, // in sec
+        process: function(bot,msg,suffix) {
+            var path = "/.rss"
+            if(suffix){
+                path = "/r/"+suffix+path;
+            }
+            rssfeed(bot,msg,"https://www.reddit.com"+path,1,false);
+        }
+    },
+	"userid": {
+		usage: "[user to get id of]",
+		description: "Returns the unique id of a user. This is useful for permissions.",
+		ownerOnly: true,
+		process: function(bot,msg,suffix) {
+			if(suffix){
+				var users = msg.channel.server.members.getAll("username",suffix);
+				if(users.length == 1){
+					bot.sendMessage(msg.channel, "The id of " + users[0] + " is " + users[0].id)
+				} else if(users.length > 1){
+					var response = "multiple users found:";
+					for(var i=0;i<users.length;i++){
+						var user = users[i];
+						response += "\nThe id of " + user + " is " + user.id;
+					}
+					bot.sendMessage(msg.channel,response);
+				} else {
+					bot.sendMessage(msg.channel,"No user " + suffix + " found!");
+				}
+			} else {
+				bot.sendMessage(msg.channel, "The id of " + msg.author + " is " + msg.author.id);
+			}
+		}
+	},
+	"topic": {
+		usage: "[topic]",
+		adminOnly: true,
+		description: 'Sets the topic for the channel. No topic removes the topic.',
+		process: function(bot,msg,suffix) {
+			bot.setTopic(msg.channel,suffix);
+		}
+	},
+	"msg": {
+		usage: "<user> <message to leave user>",
+		description: "leaves a message for a user the next time they come online",
+		process: function(bot,msg,suffix) {
+			var args = suffix.split(' ');
+			var user = args.shift();
+			var message = args.join(' ');
+			if(user.startsWith('<@')){
+				user = user.substr(2,user.length-3);
+			}
+			var target = msg.channel.server.members.get("id",user);
+			if(!target){
+				target = msg.channel.server.members.get("username",user);
+			}
+			messagebox[target.id] = {
+				channel: msg.channel.id,
+				content: target + ", " + msg.author + " said: " + message
+			};
+			updateMessagebox();
+			bot.sendMessage(msg.channel,"message saved.")
+		}
+},
     "d": {
         usage: "number of die separated by d and the number of sides on a die, no spaces",
         description: "dice rolls",
@@ -279,196 +426,49 @@ var commands = {
 			bot.sendMessage(msg.channel,msg[randomnumber]);
 		}
 	},
-	"shipgame": {
+"shipgame": {
 	   	usage: "<none>",
   		description: "Play The Game. Search for the ship you get in danbooru with -rating:explicit. Take the first non-comic and use it as your avatar.",
    		timeout: 5, // in sec
    		process: function(bot,msg) {
-      			msg[0] = "Nagato";
-      msg[1] = "Mutsu";
-      msg[2] = "Ise";
-      msg[3] = "Hyuuga";
-      msg[4] = "Yukikaze";
-      msg[5] = "Akagi";
-      msg[6] = "Kaga";
-      msg[7] = "Souryuu";
-      msg[8] = "Hiryuu";
-      msg[9] = "Shimakaze";
-      msg[10] = "Fubuki";
-      msg[11] = "Shirayuki";
-      msg[12] = "Hatsuyuki";
-      msg[13] = "Miyuki";
-      msg[14] = "Murakumo";
-      msg[15] = "Isonami";
-      msg[16] = "Ayanami";
-      msg[17] = "Shikinami";
-      msg[18] = "Ooi";
-      msg[19] = "Kitakami";
-      msg[20] = "Kongou";
-      msg[21] = "Hiei";
-      msg[22] = "Haruna";
-      msg[23] = "Kirishima";
-      msg[24] = "Houshou";
-      msg[25] = "Fusou";
-      msg[26] = "Yamashiro";
-      msg[27] = "Tenryuu";
-      msg[28] = "Tatsuta";
-      msg[29] = "Ryuujou";
-      msg[30] = "Mutsuki";
-      msg[31] = "Kisaragi";
-      msg[32] = "Satsuki";
-      msg[33] = "Fumizuki";
-      msg[34] = "Nagatsuki";
-      msg[35] = "Kikuzuki";
-      msg[36] = "Mikazuki";
-      msg[37] = "Mochizuki";
-      msg[38] = "Kuma";
-      msg[39] = "Tama";
-      msg[40] = "Kiso";
-      msg[41] = "Nagara";
-      msg[42] = "Isuzu";
-      msg[43] = "Natori";
-      msg[44] = "Yura";
-      msg[45] = "Sendai";
-      msg[46] = "Jintsuu";
-      msg[47] = "Naka";
-      msg[48] = "Chitose";
-      msg[49] = "Chiyoda";
-      msg[50] = "Mogami";
-      msg[51] = "Furutaka";
-      msg[52] = "Kako";
-      msg[53] = "Aoba";
-      msg[54] = "Myoukou";
-      msg[55] = "Nachi";
-      msg[56] = "Ashigara";
-      msg[57] = "Haguro";
-      msg[58] = "Takao";
-      msg[59] = "Atago";
-      msg[60] = "Maya";
-      msg[61] = "Choukai";
-      msg[62] = "Tone";
-      msg[63] = "Chikuma";
-      msg[64] = "Hiyou";
-      msg[65] = "Junyou";
-      msg[66] = "Oboro";
-      msg[67] = "Akebono";
-      msg[68] = "Sazanami";
-      msg[69] = "Ushio";
-      msg[70] = "Akatsuki";
-      msg[71] = "Hibiki";
-      msg[72] = "Ikazuchi";
-      msg[73] = "Inazuma";
-      msg[74] = "Hatsuharu";
-      msg[75] = "Nenohi";
-      msg[76] = "Wakaba";
-      msg[77] = "Hatsushimo";
-      msg[78] = "Shiratsuyu";
-      msg[79] = "Shigure";
-      msg[80] = "Murasame";
-      msg[81] = "Yuudachi";
-      msg[82] = "Samidare";
-      msg[83] = "Suzukaze";
-      msg[84] = "Asashio";
-      msg[85] = "Ooshio";
-      msg[86] = "Michishio";
-      msg[87] = "Arashio";
-      msg[88] = "Arare";
-      msg[89] = "Kasumi";
-      msg[90] = "Kagerou";
-      msg[91] = "Shiranui";
-      msg[92] = "Kuroshio";
-      msg[93] = "Shouhou";
-      msg[94] = "Shoukaku";
-      msg[95] = "Zuikaku";
-      msg[96] = "Kinu";
-      msg[97] = "Abukuma";
-      msg[98] = "Yuubari";
-      msg[99] = "Zuihou";
-      msg[100] = "Mikuma";
-      msg[101] = "Hatsukaze";
-      msg[102] = "Maikaze";
-      msg[103] = "Kinugasa";
-      msg[104] = "I-19";
-      msg[105] = "Suzuya";
-      msg[106] = "Kumano";
-      msg[107] = "I-168";
-      msg[108] = "I-58";
-      msg[109] = "I-8";
-      msg[110] = "Yamato";
-      msg[111] = "Akigumo";
-      msg[112] = "Yuugumo";
-      msg[113] = "Makigumo";
-      msg[114] = "Naganami";
-      msg[115] = "Agano";
-      msg[116] = "Noshiro";
-      msg[117] = "Yahagi";
-      msg[118] = "Sakawa";
-      msg[119] = "Musashi";
-      msg[120] = "Hibiki";
-      msg[121] = "Taihou";
-      msg[122] = "Katori";
-      msg[123] = "I-401";
-      msg[124] = "Akitsumaru";
-      msg[125] = "Maruyu";
-      msg[126] = "Yayoi";
-      msg[127] = "Uzuki";
-      msg[128] = "Isokaze";
-      msg[129] = "Urakaze";
-      msg[130] = "Tanikaze";
-      msg[131] = "Hamakaze";
-      msg[132] = "Bismarck";
-      msg[133] = "Leberecht Maass (Z1)";
-      msg[134] = "Max Schultz (Z3)";
-      msg[135] = "Prinz Eugen";
-      msg[136] = "Amatsukaze";
-      msg[137] = "Akashi";
-      msg[138] = "Ooyodo";
-      msg[139] = "Taigei";
-      msg[140] = "Ryuuhou";
-      msg[141] = "Tokitsukaze";
-      msg[142] = "Unryuu";
-      msg[143] = "Amagi";
-      msg[144] = "Katsuragi";
-      msg[145] = "Harusame";
-      msg[146] = "Hayashimo";
-      msg[147] = "Kiyoshimo";
-      msg[148] = "Asagumo";
-      msg[149] = "Yamagumo";
-      msg[150] = "Nowaki";
-      msg[151] = "Akizuki";
-      msg[152] = "Teruzuki";
-      msg[153] = "Takanami";
-      msg[154] = "Asashimo";
-      msg[155] = "U-511";
-      msg[156] = "Graf Zeppelin";
-      msg[157] = "Ro 500";
-      msg[158] = "Littorio";
-      msg[159] = "Roma";
-      msg[160] = "Libeccio";
-      msg[161] = "Akitsushima";
-      msg[162] = "Misuho";
-      msg[163] = "Kazagumo";
-      msg[164] = "Arashi";
-      msg[165] = "Hagikaze";
-      msg[166] = "Umikaze";
-      msg[167] = "Kawakaze";
-      msg[168] = "Hayasui";
-      msg[169] = "Kashima";
-      msg[170] = "Irako";
-      msg[171] = "Mamiya";
-
-      var randomnumber = Math.floor(Math.random() * 172);
-	var gameurl = "https://safebooru.donmai.us/posts.json?tags=" + msg[randomnumber] + "_%28kantai_collection%29+-comic&limit=1";
+      	var Ship = Shipgame.shipgame();
+	var gameurl = "https://safebooru.donmai.us/posts.json?tags=" + Ship + "_%28kantai_collection%29+-comic&limit=1";
+	var str = Ship;
+	var res = str.replace(/_/g, " ");
 
 	request(gameurl, function (error, response, html) {
   	if (!error && response.statusCode == 200) {
 	var ship = JSON.parse(html);
 	var result = "https://safebooru.donmai.us" + ship[0].large_file_url;
       
-	bot.sendMessage(msg.channel,msg[randomnumber] + "\n" + result);
+	bot.sendMessage(msg.channel,res + "\n" + result);
   }
 });
    }
+},
+	"idolhell": {
+	   	usage: "<none>",
+  		description: "Play The Game. Search for the idol you get in danbooru with -rating:explicit. Take the first non-comic and use it as your avatar.",
+   		timeout: 5, // in sec
+   		process: function(bot,msg) {
+		var Idol = Idolgame.idolhell();
+	var gameurl = "https://safebooru.donmai.us/posts.json?tags=" + Idol + "+-comic&limit=1";
+	var str = Idol;
+	var res = str.replace(/_/g, " ");
+	res = res.replace(/anime/g, " ")
+	res = res.replace(/idolmaster/g, " ")
+	res = res.replace(/cinderella girls/g, " ");
+	res = res.replace(/[{()}]/g, '');
+	
+	request(gameurl, function (error, response, html) {
+  	if (!error && response.statusCode == 200) {
+	var ship = JSON.parse(html);
+	var result = "https://safebooru.donmai.us" + ship[0].large_file_url;
+      
+	bot.sendMessage(msg.channel,res + "\n" + result);
+  }
+});
+	}
 },
     "kcwiki": {
         usage: "<search term>",
@@ -510,6 +510,7 @@ request(searchurl, function (error, response, html) {
 	"slap": {
         usage: "<message>",
         description: "Slaps someone with random things.",
+		timeout: 5, // in sec
         process: function(bot,msg,suffix){ 
         bot.sendMessage(msg.channel, msg.sender + " slaps " + suffix + " around a bit with a large trout.");}
     },
@@ -517,6 +518,7 @@ request(searchurl, function (error, response, html) {
 	"kick": {
         usage: "<user>",
         description: "Don't push the big red button.",
+		timeout: 5, // in sec
         process: function(bot,msg){ 
 		bot.kickMember(msg.author, msg.channel.server)
         bot.sendMessage(msg.channel, "Did you really think that would work?");}
@@ -558,7 +560,7 @@ request(searchurl, function (error, response, html) {
 				var windchillC = ((windchillF-32)*5/9).toFixed(2)
 				bot.sendMessage(msg.author,"The weather right now in " + suffix + " is: "+ 
 				"\n" + "Conditions: " + conditions +
-				"\n" + "Temperature: " + tempC + "C/" + tempF +"F with a wind chill of " + windchillC + "C/" + windchillF +"F"+
+				"\n" + "Temperature: " + tempC + "C/" + tempF +"F"
 				"\n" + "Wind: " + windSpdK + "kph/" + windSpdM + "mph blowing "+ windDir +
 				"\n" + "Humidity: " + humidity + "%");
 			} else {
@@ -568,7 +570,6 @@ request(searchurl, function (error, response, html) {
 		}
 	}
 };
-
 try{
 var rssFeeds = require("./rss.json");
 function loadFeeds(){
@@ -589,6 +590,52 @@ function loadFeeds(){
 }
 } catch(e) {
     console.log("Couldn't load rss.json. See rss.json.example if you want rss feed commands. error: " + e);
+}
+
+try{
+	aliases = require("./alias.json");
+} catch(e) {
+	//No aliases defined
+	aliases = {};
+}
+
+try{
+	messagebox = require("./messagebox.json");
+} catch(e) {
+	//no stored messages
+	messagebox = {};
+}
+function updateMessagebox(){
+	require("fs").writeFile("./messagebox.json",JSON.stringify(messagebox,null,2), null);
+}
+
+var fs = require('fs'),
+	path = require('path');
+function getDirectories(srcpath) {
+	return fs.readdirSync(srcpath).filter(function(file) {
+		return fs.statSync(path.join(srcpath, file)).isDirectory();
+	});
+}
+function load_plugins(){
+	var plugin_folders = getDirectories("./plugins");
+	for (var i = 0; i < plugin_folders.length; i++) {
+		var plugin;
+		try{
+			var plugin = require("./plugins/" + plugin_folders[i])
+		} catch (err){
+			console.log("Improper setup of the '" + plugin_folders[i] +"' plugin. : " + err);
+		}
+		if (plugin){
+			if("commands" in plugin){
+				for (var j = 0; j < plugin.commands.length; j++) {
+					if (plugin.commands[j] in plugin){
+						commands[plugin.commands[j]] = plugin[plugin.commands[j]];
+					}
+				}
+			}
+		}
+	}
+	console.log("Loaded " + Object.keys(commands).length + " chat commands type !help in Discord for a commands list.")
 }
 
 function rssfeed(bot,msg,url,count,full){
@@ -626,6 +673,7 @@ var bot = new Discord.Client();
 bot.on("ready", function () {
     loadFeeds();
 	console.log("Ready to begin! Serving in " + bot.channels.length + " channels");
+	load_plugins();
 });
 
 bot.on("disconnected", function () {
@@ -636,42 +684,62 @@ bot.on("disconnected", function () {
 });
 
 bot.on("message", function (msg) {
-	if (msg.author.username != "ErrorMusume") {
+	if (msg.author.username != bot.user.username) {
 		updateSpamFilterLog(msg);
 	}
 	//check if message is a command
+
 	if(msg.author.id != bot.user.id && (msg.content[0] === '!' || msg.content.indexOf(bot.user.mention()) == 0)){
         console.log("treating " + msg.content + " from " + msg.author + " as command");
 		var cmdTxt = msg.content.split(" ")[0].substring(1);
         var suffix = msg.content.substring(cmdTxt.length+2);//add one for the ! and one for the space
         if(msg.content.indexOf(bot.user.mention()) == 0){
-            cmdTxt = msg.content.split(" ")[1];
-            suffix = msg.content.substring(bot.user.mention().length+cmdTxt.length+2);
+			try {
+				cmdTxt = msg.content.split(" ")[1];
+				suffix = msg.content.substring(bot.user.mention().length+cmdTxt.length+2);
+			} catch(e){ //no command
+				console.log(msg.channel,"Yes?");
+				return;
+			}
         }
+		alias = aliases[cmdTxt];
+		if(alias){
+			cmdTxt = alias[0];
+			suffix = alias[1] + " " + suffix;
+		}
 		var cmd = commands[cmdTxt];
         if(cmdTxt === "help"){
             //help is special since it iterates over the other commands
-            for(var cmd in commands) {
-                var info = "!" + cmd;
-                var usage = commands[cmd].usage;
-                if(usage){
-                    info += " " + usage;
-                }
-                var description = commands[cmd].description;
-                if(description){
-                    info += "\n\t" + description;
-                }
-                bot.sendMessage(msg.author,info);
-            }
+			bot.sendMessage(msg.author,"Available Commands:", function(){
+				for(var cmd in commands) {
+					var info = "!" + cmd;
+					var usage = commands[cmd].usage;
+					if(usage){
+						info += " " + usage;
+					}
+					var description = commands[cmd].description;
+					if(description){
+						info += "\n\t" + description;
+					}
+					bot.sendMessage(msg.author,info);
+				}
+			});
         }
 		else if(cmd) {
 			var cmdCheckSpec = canProcessCmd(cmd, cmdTxt, msg.author.id, msg);
 			if(cmdCheckSpec.isAllow) {
-				cmd.process(bot,msg,suffix);
+				try{
+					cmd.process(bot,msg,suffix);
+				} catch(e){
+					console.log("command " + cmdTxt + " failed :(\n" + e.stack);
+				}
+            //if ("process" in cmd ){ 
+			//	cmd.process(bot,msg,suffix);
+			//}
+			} else {
+				console.log("Invalid command " + cmdTxt);
 			}
-		} else {
-			bot.sendMessage(msg.channel, "Invalid command " + cmdTxt);
-		}
+			}
 	} else {
 		//message isn't a command or is from us
         //drop our own messages to prevent feedback loops
@@ -682,25 +750,61 @@ bot.on("message", function (msg) {
         if (msg.author != bot.user && msg.isMentioned(bot.user)) {
                 bot.sendMessage(msg.channel,msg.author + ", you called?");
         }
-        
     }
 });
- 
 
-//Log user status changes
-bot.on("presence", function(data) {
-	//if(status === "online"){
-	//console.log("presence update");
-	console.log(data.user+" went "+data.status);
-	//}
-});
+function canProcessCmd(cmd, cmdText, userId, msg) {
+	var isAllowResult = true;
+	var errorMessage = "";
+	
+	if (cmd.hasOwnProperty("timeout")) {
+		// check for timeout
+		if(cmdLastExecutedTime.hasOwnProperty(cmdText)) {
+			var currentDateTime = new Date();
+			var lastExecutedTime = new Date(cmdLastExecutedTime[cmdText]);
+			lastExecutedTime.setSeconds(lastExecutedTime.getSeconds() + cmd.timeout);
+			
+			if(currentDateTime < lastExecutedTime) {
+				// still on cooldown
+				isAllowResult = false;
+				//var diff = (lastExecutedTime-currentDateTime)/1000;
+				//errorMessage = diff + " secs remaining";
+			}
+			else {
+				// update last executed date time
+				cmdLastExecutedTime[cmdText] = new Date();
+			}
+		}
+		else {
+			// first time executing, add to last executed time
+			cmdLastExecutedTime[cmdText] = new Date();
+		}
+	}
+	
+	if (cmd.hasOwnProperty("adminOnly") && cmd.adminOnly && !isAdmin(userId)) {
+		isAllowResult = false;
+	}
+	
+	if (cmd.hasOwnProperty("ownerOnly") && cmd.ownerOnly && !isOwner(userId)) {
+		isAllowResult = false;
+	}
+	
+	return { isAllow: isAllowResult, errMsg: errorMessage };
+}
+
+function isAdmin(id) {
+  return (admin_ids.indexOf(id) > -1);
+}
+function isOwner(id) {
+  return (owner_ids.indexOf(id) > -1);
+}
 
 function isInt(value) {
   return !isNaN(value) && 
          parseInt(Number(value)) == value && 
          !isNaN(parseInt(value, 10));
 }
-
+ 
 function updateSpamFilterLog(msg) {
 // get user instance by id
 	var user = msg.author;
@@ -745,49 +849,25 @@ function updateSpamFilterLog(msg) {
 	// log current message
 	currentUser.msgLogs.push({msg: msg.content, sentDateTime: new Date()});
 }
-
-function canProcessCmd(cmd, cmdText, userId, msg) {
-	var isAllowResult = true;
-	var errorMessage = "";
-	
-	if (cmd.hasOwnProperty("timeout")) {
-		// check for timeout
-		if(cmdLastExecutedTime.hasOwnProperty(cmdText)) {
-			var currentDateTime = new Date();
-			var lastExecutedTime = new Date(cmdLastExecutedTime[cmdText]);
-			lastExecutedTime.setSeconds(lastExecutedTime.getSeconds() + cmd.timeout);
-			
-			if(currentDateTime < lastExecutedTime) {
-				// still on cooldown
-				isAllowResult = false;
-				//var diff = (lastExecutedTime-currentDateTime)/1000;
-				//errorMessage = diff + " secs remaining";
-			}
-			else {
-				// update last executed date time
-				cmdLastExecutedTime[cmdText] = new Date();
-			}
-		}
-		else {
-			// first time executing, add to last executed time
-			cmdLastExecutedTime[cmdText] = new Date();
+//Log user status changes
+bot.on("presence", function(user,status,gameId) {
+	//if(status === "online"){
+	//console.log("presence update");
+	console.log(user.username+" went "+status);
+	//}
+	try{
+	if(status != 'offline'){
+		if(messagebox.hasOwnProperty(user.id)){
+			console.log("found message for " + user.id);
+			var message = messagebox[user.id];
+			var channel = bot.channels.get("id",message.channel);
+			delete messagebox[user.id];
+			updateMessagebox();
+			bot.sendMessage(channel,message.content);
 		}
 	}
-	
-	if (cmd.hasOwnProperty("adminOnly") && cmd.adminOnly && !isAdmin(userId)) {
-		isAllowResult = false;
-	}
-	
-	if (cmd.hasOwnProperty("ownerOnly") && cmd.ownerOnly && !isOwner(userId)) {
-		isAllowResult = false;
-	}
-	
-	return { isAllow: isAllowResult, errMsg: errorMessage };
-}
-
-function isAdmin(id) {
-  return (admin_ids.indexOf(id) > -1);
-}
+	}catch(e){}
+});
 
 function get_gif(tags, func) {
         //limit=1 will only return 1 gif
