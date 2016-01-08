@@ -560,7 +560,7 @@ request(searchurl, function (error, response, html) {
 				var windchillC = ((windchillF-32)*5/9).toFixed(2)
 				bot.sendMessage(msg.author,"The weather right now in " + suffix + " is: "+ 
 				"\n" + "Conditions: " + conditions +
-				"\n" + "Temperature: " + tempC + "C/" + tempF +"F"
+				"\n" + "Temperature: " + tempC + "C/" + tempF +"F" +
 				"\n" + "Wind: " + windSpdK + "kph/" + windSpdM + "mph blowing "+ windDir +
 				"\n" + "Humidity: " + humidity + "%");
 			} else {
