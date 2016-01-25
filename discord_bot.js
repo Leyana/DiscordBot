@@ -459,6 +459,7 @@ var commands = {
 	res = res.replace(/idolmaster/g, " ")
 	res = res.replace(/cinderella girls/g, " ");
 	res = res.replace(/[{()}]/g, '');
+	res = res.replace(/Naka kantai collection/g, "Kantai No Idoru");
 	
 	request(gameurl, function (error, response, html) {
   	if (!error && response.statusCode == 200) {
