@@ -1,0 +1,148 @@
+const Discord = require('discord.js');
+var bot = new Discord.Client();
+
+var request = require('request');
+var qs = require("querystring");
+var htmlToText = require('html-to-text');
+
+var cmdLastExecutedTime = {};
+
+var admin_roles = ["MiniBoss", "Bongo"];
+
+var owner_id = ["93147516974923776"];
+
+bot.login('j218557@trbvm.com', 'testbot', output);
+//bot.loginWithToken('token', output); <For when obtaining eventual login token>
+
+function output(error, token) {
+        if (error) {
+                console.log('There was an error logging in: ' + error);
+                return;
+        } else
+                console.log('Logged in. Token: ' + token);
+}
+
+var commands = {
+   
+    "say": {
+        usage: "<message>",
+        description: "bot says message",
+		adminOnly: true,
+        process: function(bot,msg,suffix){ 
+        bot.sendMessage(msg.channel, suffix);}
+
+    },
+	
+	"test": {
+		process: function (bot,msg){
+			var result = msg.server.rolesOfUser(msg.mentions[0].id);
+			bot.sendMessage(msg.channel, result);
+		}
+	}
+	
+};
+
+bot.on("ready", function () {
+	console.log("Ready to begin! Serving in " + bot.channels.length + " channels");
+});
+
+bot.on("disconnected", function () {
+	
+	console.log("Disconnected!");
+	
+});
+
+bot.on("message", function (msg) {
+	//check if message is a command
+	if(msg.author.id != bot.user.id && (msg.content[0] === '!' || msg.content.indexOf(bot.user.mention()) == 0)){
+        console.log("treating " + msg.content + " from " + msg.author.username + " as command");
+		var cmdTxt = msg.content.split(" ")[0].substring(1);
+        var suffix = msg.content.substring(cmdTxt.length+2);//add one for the ! and one for the space
+        if(msg.content.indexOf(bot.user.mention()) == 0){
+            cmdTxt = msg.content.split(" ")[1];
+            suffix = msg.content.substring(bot.user.mention().length+cmdTxt.length+2);
+        }
+		var cmd = commands[cmdTxt];
+        if(cmdTxt === "help"){
+            //help is special since it iterates over the other commands
+            for(var cmd in commands) {
+                var info = "!" + cmd;
+                var usage = commands[cmd].usage;
+                if(usage){
+                    info += " " + usage;
+                }
+                var description = commands[cmd].description;
+                if(description){
+                    info += "\n\t" + description;
+                }
+                bot.sendMessage(msg.author,info);
+            }
+        }
+		else if(cmd) {
+			var cmdCheckSpec = canProcessCmd(cmd, cmdTxt, msg.author.id, msg);
+			if(cmdCheckSpec.isAllow) {
+				cmd.process(bot,msg,suffix);
+			}
+		} else {
+			console.log("Invalid command " + cmdTxt);
+		}
+	} else {
+		//message isn't a command or is from us
+        //drop our own messages to prevent feedback loops
+        if(msg.author == bot.user){
+            return;
+        }
+        
+        if (msg.author != bot.user && msg.isMentioned(bot.user)) {
+                bot.sendMessage(msg.channel,msg.author + ", you called?");
+        }
+    }
+});
+
+function canProcessCmd(cmd, cmdText, role, msg) {
+	var isAllowResult = true;
+	var errorMessage = "";
+	
+	if (cmd.hasOwnProperty("timeout")) {
+		// check for timeout
+		if(cmdLastExecutedTime.hasOwnProperty(cmdText)) {
+			var currentDateTime = new Date();
+			var lastExecutedTime = new Date(cmdLastExecutedTime[cmdText]);
+			lastExecutedTime.setSeconds(lastExecutedTime.getSeconds() + cmd.timeout);
+			
+			if(currentDateTime < lastExecutedTime) {
+				// still on cooldown
+				isAllowResult = false;
+				//var diff = (lastExecutedTime-currentDateTime)/1000;
+				console.log(diff + " secs remaining");
+			}
+			else {
+				// update last executed date time
+				cmdLastExecutedTime[cmdText] = new Date();
+			}
+		}
+		else {
+			// first time executing, add to last executed time
+			cmdLastExecutedTime[cmdText] = new Date();
+		}
+	}
+	
+	if (cmd.hasOwnProperty("adminOnly") && cmd.adminOnly && !isAdmin(role)) {
+		isAllowResult = false;
+		bot.sendMessage(msg.author, "You do not have permission to use this command.")
+	}
+	
+	if (cmd.hasOwnProperty("ownerOnly") && cmd.ownerOnly && !isOwner(userId)) {
+		isAllowResult = false;
+	}
+	
+	return { isAllow: isAllowResult, errMsg: errorMessage };
+}
+
+function isAdmin(role) {
+		return (admin_roles.indexOf(role) > -1);
+}
+
+function isOwner(id) {
+  return (owner_id.indexOf(id) > -1);
+}
