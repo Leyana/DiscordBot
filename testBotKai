@@ -7,9 +7,8 @@ var htmlToText = require('html-to-text');
 
 var cmdLastExecutedTime = {};
 
-var admin_roles = ["MiniBoss", "Bongo"];
-
-var owner_id = ["93147516974923776"];
+var admin_roles = {'93148565559328768' : ['93149835363913728']};
+var master_id = ["93147516974923776"];
 
 bot.login('j218557@trbvm.com', 'testbot', output);
 //bot.loginWithToken('token', output); <For when obtaining eventual login token>
@@ -35,8 +34,10 @@ var commands = {
 	
 	"test": {
 		process: function (bot,msg){
-			var result = msg.server.rolesOfUser(msg.mentions[0].id);
-			bot.sendMessage(msg.channel, result);
+			var result = msg.server.rolesOfUser(msg.author.id)
+			var userID = typeof(result);
+			bot.sendMessage(msg.channel, result + " " +userID);
+			console.log(result);
 		}
 	}
 	
@@ -53,8 +54,13 @@ bot.on("disconnected", function () {
 });
 
 bot.on("message", function (msg) {
-	//check if message is a command
-	if(msg.author.id != bot.user.id && (msg.content[0] === '!' || msg.content.indexOf(bot.user.mention()) == 0)){
+	var prefix = "!";
+	
+	//check is message is command
+	if (!msg.content.startsWith(prefix) || msg.author.id == bot.user.id) return;
+	
+	//check if bot is not the one issuing command
+	if(msg.content.startsWith(prefix) || msg.content.indexOf(bot.user.mention()) == 0){
         console.log("treating " + msg.content + " from " + msg.author.username + " as command");
 		var cmdTxt = msg.content.split(" ")[0].substring(1);
         var suffix = msg.content.substring(cmdTxt.length+2);//add one for the ! and one for the space
@@ -127,22 +133,34 @@ function canProcessCmd(cmd, cmdText, role, msg) {
 		}
 	}
 	
-	if (cmd.hasOwnProperty("adminOnly") && cmd.adminOnly && !isAdmin(role)) {
-		isAllowResult = false;
-		bot.sendMessage(msg.author, "You do not have permission to use this command.")
+	if (cmd.hasOwnProperty("adminOnly") && cmd.adminOnly) {
+		var serverID = msg.server.id;
+		var userID = msg.author.id;
+		var checkRole = admin_roles[serverID][0];
+		var serverOwnerID = msg.server.owner.id;
+		var userRoleChk = msg.server.rolesOfUser(msg.author.id);
+		if (userRoleChk.length === 0 && userID != serverOwnerID){
+			isAllowResult = false;
+			bot.sendMessage(msg.author, "You do not have permission to use this command.")
+		} else {
+			var userRole = msg.server.rolesOfUser(msg.author.id)[0].id;
+			if (userRole != checkRole && userID != serverOwnerID){
+				isAllowResult = false;
+				bot.sendMessage(msg.author, "You do not have permission to use this command.")
+			}
+		} 
+		
+		
 	}
 	
-	if (cmd.hasOwnProperty("ownerOnly") && cmd.ownerOnly && !isOwner(userId)) {
+	if (cmd.hasOwnProperty("masterOnly") && cmd.ownerOnly && !isOwner(userId)) {
 		isAllowResult = false;
 	}
 	
 	return { isAllow: isAllowResult, errMsg: errorMessage };
 }
 
-function isAdmin(role) {
-		return (admin_roles.indexOf(role) > -1);
-}
 
-function isOwner(id) {
-  return (owner_id.indexOf(id) > -1);
+function isMaster(id) {
+  return (master_id.indexOf(id) > -1);
 }
