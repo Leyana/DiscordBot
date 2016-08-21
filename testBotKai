@@ -10,7 +10,7 @@ var cmdLastExecutedTime = {};
 var admin_roles = {'93148565559328768' : ['93149835363913728']};
 var master_id = ["93147516974923776"];
 
-bot.login('j218557@trbvm.com', 'testbot', output);
+bot.login(<email>, <password>, output);
 //bot.loginWithToken('token', output); <For when obtaining eventual login token>
 
 function output(error, token) {
